@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PetMiniApp</string>
+    <string name="default_notification_channel_id">rn-push-notification-channel-id</string>
 </resources>

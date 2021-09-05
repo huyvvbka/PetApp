@@ -8,6 +8,7 @@
  * @format
  */
 
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
 import messaging from '@react-native-firebase/messaging';
 import React, {useEffect} from 'react';
 import {
@@ -20,6 +21,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import PushNotification, {Importance} from 'react-native-push-notification';
 import {
   Colors,
   DebugInstructions,
@@ -27,7 +29,6 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
-
 const Section: React.FC<{
   title: string;
 }> = ({children, title}) => {
@@ -56,6 +57,37 @@ const Section: React.FC<{
   );
 };
 
+PushNotification.configure({
+  onRegister: function (token) {
+    console.log('TOKEN:', token);
+  },
+
+  onNotification: function (notification) {
+    console.log('NOTIFICATION:', notification);
+    Alert.alert('A new FCM message arrived!', JSON.stringify(notification));
+    notification.finish(PushNotificationIOS.FetchResult.NoData);
+  },
+
+  onAction: function (notification) {
+    console.log('ACTION:', notification.action);
+    console.log('NOTIFICATION:', notification);
+  },
+
+  onRegistrationError: function (err) {
+    console.error(err.message, err);
+  },
+
+  permissions: {
+    alert: true,
+    badge: true,
+    sound: true,
+  },
+
+  popInitialNotification: true,
+
+  requestPermissions: true,
+});
+
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
 
@@ -64,26 +96,28 @@ const App = () => {
   };
 
   useEffect(() => {
-    const showToken = async () => {
-      const token = await messaging().getToken();
-      console.log('🚀🚀🚀 => showToken => token', token);
-      const hasPermission = await messaging().hasPermission();
-      console.log('🚀🚀🚀 => showToken => hasPermission', hasPermission);
-    };
-    showToken();
+    PushNotification.channelExists(
+      'rn-push-notification-channel-id',
+      function (exists) {
+        if (!exists) {
+          PushNotification.createChannel(
+            {
+              channelId: 'rn-push-notification-channel-id', // (required)
+              channelName: 'My channel', // (required)
+              channelDescription: 'A channel to categorise your notifications', // (optional) default: undefined.
+              playSound: true, // (optional) default: true
+              soundName: 'default', // (optional) See `soundName` parameter of `localNotification` function
+              importance: Importance.HIGH, // (optional) default: Importance.HIGH. Int value of the Android notification importance
+              vibrate: true, // (optional) default: true. Creates the default vibration pattern if true.
+            },
+            created => console.log(`createChannel returned '${created}'`), // (optional) callback returns whether the channel was created, false means it already existed.
+          );
+        }
+      },
+    );
     messaging().setBackgroundMessageHandler(async remoteMessage => {
       console.log('Message handled in the background!', remoteMessage);
     });
-    messaging().onNotificationOpenedApp(async remoteMessage => {
-      console.log('Message onNotificationOpenedApp!', remoteMessage);
-    });
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      console.log('🚀🚀🚀 => unsubscribe => remoteMessage', remoteMessage);
-
-      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
-    });
-
-    return unsubscribe;
   }, []);
 
   return (
